@@ -23,6 +23,9 @@ from uptrain.core.lib.helper_funcs import (
     load_list_from_df,
 )
 
+from typing import Union
+
+
 class Framework:
     """
     Base Framework class which handles model observability and retraining
@@ -60,7 +63,8 @@ class Framework:
             self.msg_queue = SimpleQueue()
             cfg_copy = deepcopy(cfg_dict)
             cfg_copy.update({"run_background_log_consumer": False})
-            daemon = Thread(target=background_log_consumer_task, args=(self.msg_queue,cfg_copy,), daemon=True, name='Background Log Consumer')
+            daemon = Thread(target=background_log_consumer_task, args=(
+                self.msg_queue, cfg_copy,), daemon=True, name='Background Log Consumer')
             daemon.start()
         else:
             training_args = cfg.training_args
@@ -94,12 +98,14 @@ class Framework:
             self.reset_retraining()
 
             if training_args.data_transformation_func:
-                self.set_data_transformation_func(training_args.data_transformation_func)
+                self.set_data_transformation_func(
+                    training_args.data_transformation_func)
             if training_args.annotation_method:
                 am = training_args.annotation_method
                 self.set_annotation_method(am.method, args=am.args)
             if evaluation_args.golden_testing_dataset:
-                self.set_golden_testing_dataset(evaluation_args.golden_testing_dataset)
+                self.set_golden_testing_dataset(
+                    evaluation_args.golden_testing_dataset)
             if training_args.training_func:
                 self.set_training_func(training_args.training_func)
             if evaluation_args.inference_func:
@@ -126,7 +132,8 @@ class Framework:
             ids = [int(timestamp + str(x)) for x in rand_int]
         elif self.data_id_type == "id":
             ids = list(
-                range(self.predicted_count, self.predicted_count + self.batch_size)
+                range(self.predicted_count,
+                      self.predicted_count + self.batch_size)
             )
         else:
             raise Exception("Invalid Data id type: %s" % self.data_id_type)
@@ -147,7 +154,8 @@ class Framework:
         )
         num_selected_datapoints = np.sum(np.array(is_interesting))
         self.selected_count += num_selected_datapoints
-        self.smart_data_ids.extend(np.array(data["id"])[np.array(is_interesting)])
+        self.smart_data_ids.extend(
+            np.array(data["id"])[np.array(is_interesting)])
 
         """
         Log only the interesting test cases to data 
@@ -164,7 +172,8 @@ class Framework:
             )
             add_data_to_warehouse(deepcopy(smart_data), path_smart_data)
 
-        edge_cases_txt = str(self.selected_count) + " edge cases identified out of " + str(self.predicted_count) + " total samples"
+        edge_cases_txt = str(self.selected_count) + " edge cases identified out of " + \
+            str(self.predicted_count) + " total samples"
         if self.selected_count > 0:
             self.log_handler.add_alert(
                 "Number of edge cases collected",
@@ -199,7 +208,8 @@ class Framework:
         if self.feat_name_list is None:
             self.feat_name_list = get_feature_names_list(inputs)
 
-        outputs = list(outputs) if outputs is not None else [None] * self.batch_size
+        outputs = list(outputs) if outputs is not None else [
+            None] * self.batch_size
         gts = list(gts) if gts is not None else [None] * self.batch_size
         data = inputs
         data.update(
@@ -332,9 +342,9 @@ class Framework:
         """
         df_gt = df.loc[gt_id_indices]
         data = dict(zip(
-                self.feat_name_list,
-                [load_list_from_df(df_gt, x) for x in self.feat_name_list],
-            ))
+            self.feat_name_list,
+            [load_list_from_df(df_gt, x) for x in self.feat_name_list],
+        ))
         data.update({
             "output": load_list_from_df(df_gt, "output"),
             "id": list(gt_data["id"]),
@@ -343,7 +353,7 @@ class Framework:
         self.check(data, extra_args=self.extra_args)
         self.smartly_add_data(data, extra_args=self.extra_args)
 
-    #TODO: @Vipul - Do we need this?
+    # TODO: @Vipul - Do we need this?
     def feat_slicing(self, relevant_feat_list, limit_list):
         """
         This function checks anomalies for a subset of data.
@@ -392,16 +402,17 @@ class Framework:
         if 'id' not in cols:
             data.update({"id": np.array(ids)})
         return data
-    
+
     def convert_dict_values_to_numpy_values(self, inputs: dict) -> dict:
         data = {}
         for key, value in inputs.items():
             data.update({key: np.array(value)})
         return data
 
-    def log(self, inputs=None, outputs=None, gts=None, identifiers=None, extra=None):
+    def log(self, inputs: Union[pd.DataFrame, dict] = None, outputs: np.ndarray = None, gts=None, identifiers=None, extra=None):
         if self.run_background_log_consumer:
-            data = {"inputs": inputs, "outputs": outputs, "gts": gts, "identifiers": identifiers, "extra": extra}
+            data = {"inputs": inputs, "outputs": outputs, "gts": gts,
+                    "identifiers": identifiers, "extra": extra}
             try:
                 self.msg_queue.put(data)
             except:
@@ -412,9 +423,11 @@ class Framework:
             # if (inputs is not None) and (outputs is None):
             #     raise Exception("Predictions should be present while logging inputs")
             if (inputs is None) and (outputs is not None):
-                raise Exception("Inputs should be present while logging predictions")
+                raise Exception(
+                    "Inputs should be present while logging predictions")
             if (gts is not None) and (identifiers is None):
-                raise Exception("Identifiers should be present while logging ground truths")
+                raise Exception(
+                    "Identifiers should be present while logging ground truths")
 
             if inputs is not None:
                 if isinstance(inputs, pd.DataFrame):
@@ -422,7 +435,8 @@ class Framework:
                 elif isinstance(inputs, dict):
                     inputs = self.convert_dict_values_to_numpy_values(inputs)
                 else:
-                    raise Exception("Inputs was expected to be a Pandas Dataframe or Python Dictionary")
+                    raise Exception(
+                        "Inputs was expected to be a Pandas Dataframe or Python Dictionary")
                 identifiers = self.check_and_add_data(inputs, outputs)
 
             if gts is not None:
@@ -436,6 +450,7 @@ class Framework:
     def clear_cache(self):
         self.cache = {}
 
+
 def background_log_consumer_task(msg_queue, cfg):
     framework = Framework(cfg_dict=cfg)
     # run forever
@@ -444,4 +459,5 @@ def background_log_consumer_task(msg_queue, cfg):
         data = msg_queue.get()
 
         # log the message
-        framework.log(inputs=data['inputs'], outputs=data['outputs'], gts=data['gts'], identifiers=data['identifiers'], extra=data['extra'])
+        framework.log(inputs=data['inputs'], outputs=data['outputs'],
+                      gts=data['gts'], identifiers=data['identifiers'], extra=data['extra'])

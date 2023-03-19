@@ -12,7 +12,7 @@ class NumpyEncoder(json.JSONEncoder):
         if isinstance(obj, np.ndarray):
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
-    
+
 
 def get_free_port(port):
     HOST = "localhost"
@@ -38,15 +38,17 @@ class StreamlitLogs:
         self.counts = {}
         self.log_folder = log_folder
 
-        # remote_st_py_file = "https://raw.githubusercontent.com/uptrain-ai/uptrain/main/uptrain/core/classes/logging/st_run.py"
-        remote_st_py_file = "../../uptrain/core/classes/logging/st_run.py"
+        remote_st_py_file = "https://raw.githubusercontent.com/uptrain-ai/uptrain/main/uptrain/core/classes/logging/st_run.py"
+        # remote_st_py_file = "../../uptrain/core/classes/logging/st_run.py"
 
         if port is None:
             cmd = "streamlit run " + remote_st_py_file + " -- " + self.log_folder
         else:
             port = get_free_port(int(port))
-            cmd = "streamlit run " + remote_st_py_file + f" --server.port {str(port)} " + " -- " + self.log_folder
-        launch_st = lambda: os.system(cmd)
+            cmd = "streamlit run " + remote_st_py_file + \
+                f" --server.port {str(port)} " + " -- " + self.log_folder
+
+        def launch_st(): return os.system(cmd)
         t = threading.Thread(target=launch_st, args=([]))
         t.start()
 
@@ -74,7 +76,7 @@ class StreamlitLogs:
                 for key in keys:
                     df.loc[cond, key] = dict[key]
             else:
-                df = pd.concat([df, pd.DataFrame([dict])], ignore_index = True)
+                df = pd.concat([df, pd.DataFrame([dict])], ignore_index=True)
                 for key in keys:
                     if key[0:2] == 'x_':
                         df = df.sort_values(by=[key])
@@ -84,7 +86,6 @@ class StreamlitLogs:
                 writer_object = csv.writer(f_object)
                 writer_object.writerow(list(dict.values()))
                 f_object.close()
-
 
     def add_histogram(self, data, folder, models=None, features=None, file_name=''):
         if isinstance(data, dict):
@@ -118,7 +119,6 @@ class StreamlitLogs:
                         this_point.extend(list(features[idx].values()))
                     writer_object.writerow(this_point)
                 f_object.close()
-
 
     def add_alert(self, alert_name, alert, folder):
         file_name = os.path.join(folder, str(alert_name) + ".json")
